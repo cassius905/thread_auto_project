@@ -26,16 +26,14 @@ const PostCard = ({ post, isSelected, onToggleSelect, onApprove, onDelete, onUpd
       alert('발송 날짜 및 시간을 선택해주세요.');
       return;
     }
-    const isoDate = new Date(scheduleDate).toISOString();
-    onSchedule(post.id, isoDate);
+    const localDateStr = scheduleDate.length === 16 ? scheduleDate + ':00' : scheduleDate;
+    onSchedule(post.id, localDateStr);
     setIsScheduling(false);
   };
 
   const handleOpenSchedule = () => {
     if (post.scheduled_at) {
-      const date = new Date(post.scheduled_at);
-      const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-      setScheduleDate(localDate.toISOString().slice(0, 16));
+      setScheduleDate(post.scheduled_at.slice(0, 16));
     } else {
       setScheduleDate('');
     }

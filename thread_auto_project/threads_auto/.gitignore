@@ -29,3 +29,23 @@ dist-ssr
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Python
+__pycache__/
+*.py[cod]
+*.class
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+
+# SQLite
+*.sqlite3
+
+# IDE / OS
+.DS_Store
+.idea/
+.vscode/
+

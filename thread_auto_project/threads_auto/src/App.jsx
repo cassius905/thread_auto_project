@@ -185,9 +185,9 @@ function App() {
       alert('발송 날짜 및 시간을 선택해주세요.');
       return;
     }
-    const isoDate = new Date(bulkScheduleDate).toISOString();
+    const localDateStr = bulkScheduleDate.length === 16 ? bulkScheduleDate + ':00' : bulkScheduleDate;
     try {
-      await bulkSchedule(selectedPostIds, isoDate);
+      await bulkSchedule(selectedPostIds, localDateStr);
       setSelectedPostIds([]);
       setIsBulkScheduling(false);
       setBulkScheduleDate('');
