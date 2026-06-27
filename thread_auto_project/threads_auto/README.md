@@ -1,18 +1,31 @@
-# React + Vite
+# 🧵 프로젝트 명세서: 안티그레비티 (Anti-gravity)
+> "콘텐츠 성장의 제약을 넘어, 중력을 거스르는 소셜 미디어 스케일업 파이프라인"
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+안티그레비티(Anti-gravity)는 AI 기반의 콘텐츠 생성부터 다중 상태 플랫폼(Threads 등) 발송 큐(Queue) 관리, 예약 스케줄링, 성과 모니터링까지 전 과정을 단일 화면에서 제어하는 마케팅 테크(MarTech) 자동화 솔루션입니다.
 
-Currently, two official plugins are available:
+## 1. 프로젝트 개요 (Overview)
+- **프로젝트명**: 안티그레비티 (Anti-gravity)
+- **개발 형태**: Full-Stack 웹 애플리케이션 (Single Page Dashboard)
+- **핵심 타깃**: 퍼포먼스 마케터, 소셜 미디어 크리에이터, 1인 이커머스 운영자
+- **기획 배경**: 소셜 미디어 마케팅은 지속적이고 규칙적인 피드 발행이 필수적입니다. 하지만 매번 수동으로 콘텐츠를 기획하고, 채널별 글자 수 제약에 맞춰 검수하며, 실시간으로 업로드하는 작업은 리소스 낭비가 심합니다. 안티그레비티는 이 비효율을 해결하기 위해 '콘텐츠 생성 ➡️ 검수 ➡️ 대기 ➡️ 예약 ➡️ 발송 및 추적'의 유기적 상태 기계(State Machine)를 칸반 형태로 시스템화했습니다.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 2. 파이프라인 및 핵심 기능 (Core Pipeline)
+프로젝트는 콘텐츠의 생명 주기를 총 4단계의 칸반 보드로 시각화하여 제어합니다.
 
-## React Compiler
+### 1단계: 생성됨 (Created) — AI 자산 보관 및 1차 검수
+- **AI 생성 콘텐츠 수집**: 자동화 엔진 또는 AI API를 통해 생성된 원시 콘텐츠(Raw Text)와 미디어 매핑 데이터를 수집합니다.
+- **플랫폼 맞춤형 글자 수 유효성 검사**: 스레드(Threads)의 글자 수 제한(500자)을 실시간으로 계산하여 초과 시 시각적 경고(UI 피드백)를 제공합니다.
+- **미디어 프리뷰**: 첨부될 이미지나 카드 뉴스를 대시보드 내에서 즉시 미리 보기 하여 시각적 밸런스를 검토합니다.
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+### 2단계: 승인됨 (Approved) — 발송 대기 및 스케줄링
+- **콘텐츠 확정**: 1차 검수가 끝난 양질의 자산만 파이프라인의 다음 단계로 전송합니다.
+- **지능형 예약 엔진 연동**: '발송 예약 설정' 토글을 제공하며, 활성화 시 정밀한 날짜 및 시간 선택기(Date/Time Picker)가 노출되어 원하는 타깃 시간에 마케팅 피드를 배치할 수 있습니다.
 
-Note: This will impact Vite dev & build performances.
+### 3단계: 발송 예정 (Scheduled) — 실시간 큐(Queue) 관리
+- **시간대별 타임라인 정렬**: 예약 확정된 콘텐츠들이 발송 대기열(Queue)에 배치되어 카운트다운을 시작합니다.
+- **유연한 데이터 회수(Rollback)**: 발송 직전 타임라인이나 텍스트에서 오타 및 이슈가 발견될 경우, 발송 취소(회수) 기능을 통해 콘텐츠 소실 없이 이전 단계로 안전하게 되돌려 수정할 수 있습니다.
+- **즉시 발송 트리거**: 예약 시간과 관계없이 실시간 트렌드에 대응해야 할 경우 즉시 API 연동 발송을 강제할 수 있습니다.
 
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+### 4단계: 완료됨 (Completed) — 퍼포먼스 트래킹 및 아카이빙
+- **다이렉트 링크 연결**: 발송이 완료된 스레드 게시물의 실제 URL과 연동되어 클릭 한 번으로 인앱 브라우저나 외부 탭을 통해 즉시 확인이 가능합니다.
+- **기록 최적화**: 마케팅 성과 측정이 끝난 데이터나 불필요한 이력은 기록 삭제를 통해 데이터베이스 및 화면 레이아웃을 쾌적하게 유지합니다.

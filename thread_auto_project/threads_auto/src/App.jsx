@@ -1,198 +1,363 @@
-import { useState } from 'react'
-import './App.css'
-
-const initialContents = [
-  { 
-    id: 1, 
-    text: "첫 번째 스레드 콘텐츠입니다! 여기에 500자 제한이 적용됩니다. #마케팅 #자동화", 
-    status: "created", 
-    media: "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=500" 
-  },
-  { 
-    id: 2, 
-    text: "승인 완료되어 예약 대기 중인 콘텐츠 샘플입니다. 토글을 켜서 시간을 지정해보세요.", 
-    status: "approved", 
-    scheduledTime: "" 
-  },
-  { 
-    id: 3, 
-    text: "오후 6시에 발송 예정인 스레드 타래 내용입니다.", 
-    status: "scheduled", 
-    scheduledTime: "2026-06-26T18:00" 
-  },
-  { 
-    id: 4, 
-    text: "이미 발송이 완료된 성공적인 스레드 마케팅 콘텐츠입니다.", 
-    status: "completed", 
-    threadLink: "https://threads.net" 
-  },
-];
+import React, { useState, useEffect } from 'react';
+import KanbanBoard from './components/KanbanBoard';
+import GenerateControlBar from './components/GenerateControlBar';
+import { fetchPosts, deletePost, updatePostStatus, updatePostContent, login, bulkApprove, bulkDelete, bulkSchedule, bulkCancelSchedule } from './utils/api';
+import './App.css';
 
 function App() {
-  const [contents, setContents] = useState(initialContents);
+  // Auth state
+  const [isAuthenticated, setIsAuthenticated] = useState(!!sessionStorage.getItem('auth_token'));
+  const [passwordInput, setPasswordInput] = useState('');
+  const [loginError, setLoginError] = useState('');
 
-  const updateStatus = (id, newStatus, extraFields = {}) => {
-    setContents(prev => prev.map(item => 
-      item.id === id ? { ...item, status: newStatus, ...extraFields } : item
-    ));
+  // App state
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Selection state
+  const [selectedPostIds, setSelectedPostIds] = useState([]);
+
+  // Load posts from MySQL DB via FastAPI on mount and setup WebSocket
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    setLoading(true);
+    const loadPosts = async () => {
+      try {
+        const data = await fetchPosts();
+        setPosts(data);
+      } catch (err) {
+        console.error(err);
+        setError('서버에 연결할 수 없습니다. 백엔드 서버가 실행 중인지 확인하세요.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // 최초 데이터 로드
+    loadPosts();
+
+    // WebSocket 연결 설정
+    const wsUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+      ? 'ws://localhost:8000/ws'
+      : `ws://${window.location.hostname}:8000/ws`;
+
+    const ws = new WebSocket(wsUrl);
+
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        if (message.action === 'refresh') {
+          console.log('WebSocket: Received refresh signal, reloading posts...');
+          loadPosts();
+        }
+      } catch (err) {
+        console.error('WebSocket message parsing error:', err);
+      }
+    };
+
+    ws.onclose = () => {
+      console.log('WebSocket disconnected');
+    };
+
+    return () => {
+      ws.close();
+    };
+  }, [isAuthenticated]);
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoginError('');
+    try {
+      const data = await login(passwordInput);
+      if (data.success) {
+        sessionStorage.setItem('auth_token', data.token);
+        setIsAuthenticated(true);
+      }
+    } catch (err) {
+      setLoginError(err.message || '로그인 실패');
+    }
   };
 
-  const deleteContent = (id) => {
-    setContents(prev => prev.filter(item => item.id !== id));
+  const handleLogout = () => {
+    sessionStorage.removeItem('auth_token');
+    setIsAuthenticated(false);
+    setPosts([]);
+    setSelectedPostIds([]);
   };
 
-  const createdItems = contents.filter(item => item.status === "created");
-  const approvedItems = contents.filter(item => item.status === "approved");
-  const scheduledItems = contents.filter(item => item.status === "scheduled");
-  const completedItems = contents.filter(item => item.status === "completed");
+  const handleGenerateComplete = (newPosts) => {
+    // 백엔드에서 생성 후 WebSocket이 즉시 동작하지 않을 경우를 대비한 낙관적 업데이트
+    setPosts(prevPosts => [...newPosts, ...prevPosts]);
+  };
+
+  const handleApprovePost = async (postId) => {
+    try {
+      await updatePostStatus(postId, { status: 'APPROVED' });
+    } catch (err) {
+      console.error(err);
+      alert('승인 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleDeletePost = async (postId) => {
+    try {
+      await deletePost(postId);
+      setSelectedPostIds(prev => prev.filter(id => id !== postId));
+    } catch (err) {
+      console.error(err);
+      alert('삭제 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleUpdatePostContent = async (postId, newContent) => {
+    try {
+      await updatePostContent(postId, newContent);
+    } catch (err) {
+      console.error(err);
+      alert('수정 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleSchedulePost = async (postId, scheduledAt) => {
+    try {
+      await updatePostStatus(postId, { status: 'SCHEDULED', scheduled_at: scheduledAt });
+    } catch (err) {
+      console.error(err);
+      alert('예약 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleCancelSchedulePost = async (postId) => {
+    try {
+      await updatePostStatus(postId, { status: 'APPROVED', scheduled_at: null });
+    } catch (err) {
+      console.error(err);
+      alert('예약 취소 중 오류가 발생했습니다.');
+    }
+  };
+
+  // Selection handlers
+  const handleToggleSelect = (postId) => {
+    setSelectedPostIds(prev =>
+      prev.includes(postId) ? prev.filter(id => id !== postId) : [...prev, postId]
+    );
+  };
+
+  const handleSelectColumn = (status, selectAll) => {
+    const columnPostIds = posts.filter(p => p.status === status).map(p => p.id);
+    if (selectAll) {
+      setSelectedPostIds(prev => Array.from(new Set([...prev, ...columnPostIds])));
+    } else {
+      setSelectedPostIds(prev => prev.filter(id => !columnPostIds.includes(id)));
+    }
+  };
+
+  const [isBulkScheduling, setIsBulkScheduling] = useState(false);
+  const [bulkScheduleDate, setBulkScheduleDate] = useState('');
+
+  // Bulk action handlers
+  const handleBulkApprove = async () => {
+    if (!window.confirm(`선택한 ${selectedPostIds.length}개의 게시물을 일괄 승인하시겠습니까?`)) return;
+    try {
+      await bulkApprove(selectedPostIds);
+      setSelectedPostIds([]);
+    } catch (err) {
+      console.error(err);
+      alert('일괄 승인 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`선택한 ${selectedPostIds.length}개의 게시물을 일괄 삭제하시겠습니까?`)) return;
+    try {
+      await bulkDelete(selectedPostIds);
+      setSelectedPostIds([]);
+    } catch (err) {
+      console.error(err);
+      alert('일괄 삭제 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleBulkScheduleConfirm = async () => {
+    if (!bulkScheduleDate) {
+      alert('발송 날짜 및 시간을 선택해주세요.');
+      return;
+    }
+    const isoDate = new Date(bulkScheduleDate).toISOString();
+    try {
+      await bulkSchedule(selectedPostIds, isoDate);
+      setSelectedPostIds([]);
+      setIsBulkScheduling(false);
+      setBulkScheduleDate('');
+    } catch (err) {
+      console.error(err);
+      alert('일괄 예약 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleBulkCancelSchedule = async () => {
+    if (!window.confirm(`선택한 ${selectedPostIds.length}개의 예약 발송을 일괄 취소하시겠습니까?`)) return;
+    try {
+      await bulkCancelSchedule(selectedPostIds);
+      setSelectedPostIds([]);
+    } catch (err) {
+      console.error(err);
+      alert('일괄 예약 취소 중 오류가 발생했습니다.');
+    }
+  };
+
+  const selectedPosts = posts.filter(p => selectedPostIds.includes(p.id));
+  const selectedStatuses = Array.from(new Set(selectedPosts.map(p => p.status)));
+  const canBulkApprove = selectedStatuses.length === 1 && selectedStatuses[0] === 'CREATED';
+  const canBulkSchedule = selectedStatuses.length > 0 && selectedStatuses.every(s => s === 'APPROVED' || s === 'SCHEDULED');
+  const canBulkCancelSchedule = selectedStatuses.length === 1 && selectedStatuses[0] === 'SCHEDULED';
+  const canBulkDelete = selectedPostIds.length > 0;
+
+  if (!isAuthenticated) {
+    return (
+      <div className="app-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="bg-glow top-left"></div>
+        <div className="bg-glow bottom-right"></div>
+        <div className="glass-card" style={{ padding: '40px', width: '100%', maxWidth: '400px', textAlign: 'center' }}>
+          <h1 style={{ marginBottom: '24px', fontSize: '1.8rem' }}>🪐 Anti-gravity</h1>
+          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <input
+              type="password"
+              placeholder="비밀번호를 입력하세요"
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              style={{
+                padding: '12px',
+                borderRadius: '8px',
+                border: '1px solid rgba(255,255,255,0.2)',
+                background: 'rgba(0,0,0,0.2)',
+                color: 'white',
+                fontSize: '1rem'
+              }}
+            />
+            {loginError && <p style={{ color: '#ef4444', fontSize: '0.9rem', margin: 0 }}>{loginError}</p>}
+            <button type="submit" className="primary-button" style={{ padding: '12px', fontSize: '1rem' }}>
+              로그인
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="dashboard-container">
-      <header className="dashboard-header">
-        <h1>🧵 Threads 자동화 대시보드</h1>
-        <p>콘텐츠 생성부터 발송 완료까지 한눈에 관리하는 파이프라인</p>
+    <div className="app-container">
+      <div className="bg-glow top-left"></div>
+      <div className="bg-glow bottom-right"></div>
+
+      <header className="app-header glass-panel">
+        <div className="logo">
+          <span className="logo-icon">🪐</span>
+          <h1>Anti-gravity</h1>
+        </div>
+        <div className="user-profile" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <button onClick={handleLogout} className="btn-icon" style={{ padding: '6px 12px', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '6px' }}>
+            로그아웃
+          </button>
+          <div className="avatar">A</div>
+        </div>
       </header>
 
-      <div className="kanban-board">
-        
-        {/* 1. 생성됨 */}
-        <div className="kanban-column">
-          <div className="column-header">
-            <span className="column-title">
-              <span className="badge bg-blue"></span> 1. 생성됨
-            </span>
-            <span className="item-count">{createdItems.length}</span>
-          </div>
-          <div className="card-list">
-            {createdItems.map(item => (
-              <div key={item.id} className="content-card">
-                <div className="card-no">#NO-{item.id}</div>
-                <p className="card-text">{item.text}</p>
-                {item.media && (
-                  <div className="media-preview">
-                    <img src={item.media} alt="미디어 프리뷰" />
-                  </div>
-                )}
-                <div className="card-footer">
-                  <span className={`char-count ${item.text.length > 500 ? 'text-danger' : ''}`}>
-                    {item.text.length} / 500자
-                  </span>
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    <button onClick={() => deleteContent(item.id)} className="btn-reject">거부</button>
-                    <button onClick={() => updateStatus(item.id, "approved")} className="btn-approve">승인</button>
-                  </div>
-                </div>
-              </div>
-            ))}
-            {createdItems.length === 0 && <p className="empty-msg">대기 중인 콘텐츠가 없습니다.</p>}
-          </div>
-        </div>
+      <main className="app-main" style={{ paddingTop: '24px', paddingBottom: '80px', paddingLeft: '100px', paddingRight: '100px' }}>
+        <GenerateControlBar onGenerateComplete={handleGenerateComplete} />
 
-        {/* 2. 승인됨 */}
-        <div className="kanban-column">
-          <div className="column-header">
-            <span className="column-title">
-              <span className="badge bg-purple"></span> 2. 승인됨
-            </span>
-            <span className="item-count">{approvedItems.length}</span>
+        {loading ? (
+          <div style={{ textAlign: 'center', marginTop: '40px' }}>
+            <span className="spinner" style={{ borderColor: 'var(--accent-primary)', borderTopColor: 'transparent', width: '32px', height: '32px' }}></span>
+            <p style={{ marginTop: '16px', color: 'var(--text-secondary)' }}>데이터베이스에서 게시물을 불러오는 중...</p>
           </div>
-          <div className="card-list">
-            {approvedItems.map(item => (
-              <div key={item.id} className="content-card">
-                <div className="card-no">#NO-{item.id}</div>
-                <p className="card-text">{item.text}</p>
-                <div className="scheduler-box">
-                  <label className="toggle-label">
-                    <span>발송 예약 설정</span>
-                    <input 
-                      type="checkbox" 
-                      checked={!!item.scheduledTime}
-                      onChange={(e) => updateStatus(item.id, "approved", { scheduledTime: e.target.checked ? new Date().toISOString().slice(0, 16) : "" })}
-                    />
-                  </label>
-                  {item.scheduledTime && (
-                    <div className="time-input-wrapper">
-                      <input 
-                        type="datetime-local" 
-                        value={item.scheduledTime}
-                        onChange={(e) => updateStatus(item.id, "approved", { scheduledTime: e.target.value })}
-                        className="time-input"
-                      />
-                      <button onClick={() => updateStatus(item.id, "scheduled")} className="btn-confirm-schedule">
-                        예약 확정하기
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-            {approvedItems.length === 0 && <p className="empty-msg">승인된 콘텐츠가 없습니다.</p>}
+        ) : error ? (
+          <div className="empty-state" style={{ margin: '24px', borderColor: '#ef4444' }}>
+            {error}
           </div>
-        </div>
+        ) : (
+          <KanbanBoard
+            posts={posts}
+            selectedPostIds={selectedPostIds}
+            onToggleSelect={handleToggleSelect}
+            onSelectColumn={handleSelectColumn}
+            onApprove={handleApprovePost}
+            onDelete={handleDeletePost}
+            onUpdate={handleUpdatePostContent}
+            onSchedule={handleSchedulePost}
+            onCancelSchedule={handleCancelSchedulePost}
+          />
+        )}
+      </main>
 
-        {/* 3. 발송 예정 */}
-        <div className="kanban-column">
-          <div className="column-header">
-            <span className="column-title">
-              <span className="badge bg-amber"></span> 3. 발송 예정
-            </span>
-            <span className="item-count">{scheduledItems.length}</span>
-          </div>
-          <div className="card-list">
-            {scheduledItems.map(item => (
-              <div key={item.id} className="content-card">
-                <div className="card-no">
-                  <span>#NO-{item.id}</span>
-                  <span style={{ color: '#f59e0b', fontWeight: '500' }}>⏳ {item.scheduledTime?.replace('T', ' ')}</span>
-                </div>
-                <p className="card-text">{item.text}</p>
-                <div className="btn-group">
-                  <button onClick={() => updateStatus(item.id, "approved", { scheduledTime: "" })} className="btn-cancel">
-                    발송 취소 (회수)
-                  </button>
-                  <button onClick={() => updateStatus(item.id, "completed", { threadLink: "https://threads.net" })} className="btn-direct">
-                    즉시발송
-                  </button>
-                </div>
-              </div>
-            ))}
-            {scheduledItems.length === 0 && <p className="empty-msg">예약된 대기열이 비어있습니다.</p>}
-          </div>
+      {/* Bulk Action Bar */}
+      {selectedPostIds.length > 0 && (
+        <div className="bulk-action-bar animate-fade-in" style={{
+          position: 'fixed',
+          bottom: '24px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'rgba(20, 20, 30, 0.9)',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255,255,255,0.2)',
+          borderRadius: '12px',
+          padding: '12px 24px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+          zIndex: 1000
+        }}>
+          <span style={{ fontWeight: '500' }}>{selectedPostIds.length}개 선택됨</span>
+          <div style={{ width: '1px', height: '24px', background: 'rgba(255,255,255,0.2)' }}></div>
+          {isBulkScheduling ? (
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <input
+                type="datetime-local"
+                value={bulkScheduleDate}
+                onChange={(e) => setBulkScheduleDate(e.target.value)}
+                style={{ fontSize: '0.9rem', background: 'rgba(0,0,0,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '4px', padding: '4px' }}
+              />
+              <button onClick={handleBulkScheduleConfirm} className="primary-button" style={{ padding: '6px 12px', fontSize: '0.9rem' }}>
+                ✔️ 예약
+              </button>
+              <button onClick={() => setIsBulkScheduling(false)} className="btn-icon" style={{ padding: '6px 12px', fontSize: '0.9rem' }}>
+                취소
+              </button>
+            </div>
+          ) : (
+            <>
+              {canBulkApprove && (
+                <button onClick={handleBulkApprove} className="primary-button" style={{ padding: '6px 12px', fontSize: '0.9rem' }}>
+                  ✅ 일괄 승인
+                </button>
+              )}
+              {canBulkSchedule && (
+                <button onClick={() => setIsBulkScheduling(true)} className="primary-button" style={{ padding: '6px 12px', fontSize: '0.9rem' }}>
+                  🗓️ 일괄 예약
+                </button>
+              )}
+              {canBulkCancelSchedule && (
+                <button onClick={handleBulkCancelSchedule} className="btn-icon" style={{ padding: '6px 12px', fontSize: '0.9rem' }}>
+                  ↩️ 예약 취소
+                </button>
+              )}
+              {canBulkDelete && (
+                <button onClick={handleBulkDelete} className="btn-icon delete-btn" style={{ padding: '6px 12px', fontSize: '0.9rem', border: '1px solid #ef4444' }}>
+                  🗑️ 일괄 삭제
+                </button>
+              )}
+              <button onClick={() => { setSelectedPostIds([]); setIsBulkScheduling(false); setBulkScheduleDate(''); }} className="btn-icon" style={{ padding: '6px 12px', fontSize: '0.9rem' }}>
+                선택 해제
+              </button>
+            </>
+          )}
         </div>
-
-        {/* 4. 완료됨 */}
-        <div className="kanban-column">
-          <div className="column-header">
-            <span className="column-title">
-              <span className="badge bg-green"></span> 4. 완료됨
-            </span>
-            <span className="item-count">{completedItems.length}</span>
-          </div>
-          <div className="card-list">
-            {completedItems.map(item => (
-              <div key={item.id} className="content-card">
-                <div className="card-no">
-                  <span>#NO-{item.id}</span>
-                  <span style={{ color: '#10b981', fontWeight: '500' }}>✅ 발송 완료</span>
-                </div>
-                <p className="card-text" style={{ color: '#868e96' }}>{item.text}</p>
-                <div className="btn-group" style={{ alignItems: 'center' }}>
-                  <a href={item.threadLink} target="_blank" rel="noreferrer" className="btn-link">
-                    스레드 이동 🔗
-                  </a>
-                  <button onClick={() => deleteContent(item.id)} className="btn-delete" title="기록 삭제">
-                    🗑️
-                  </button>
-                </div>
-              </div>
-            ))}
-            {completedItems.length === 0 && <p className="empty-msg">발송 완료된 내역이 없습니다.</p>}
-          </div>
-        </div>
-
-      </div>
+      )}
     </div>
-  )
+  );
 }
 
-export default App
+export default App;

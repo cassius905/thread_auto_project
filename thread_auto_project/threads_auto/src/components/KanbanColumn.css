@@ -1,0 +1,112 @@
+.kanban-column {
+  width: 100%;
+  flex: none; /* Don't grow equally, size based on content/max-height */
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 450px; /* Each section has a max height */
+  border-radius: 12px;
+  padding: 16px;
+  transition: all 0.2s ease-in-out;
+}
+
+/* Status specific column backgrounds */
+.kanban-column.column-created {
+  background-color: var(--status-created-bg);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+}
+
+.kanban-column.column-approved {
+  background-color: var(--status-approved-bg);
+  border: 1px solid rgba(16, 185, 129, 0.15);
+}
+
+.kanban-column.column-scheduled {
+  background-color: var(--status-scheduled-bg);
+  border: 1px solid rgba(245, 158, 11, 0.15);
+}
+
+.kanban-column.column-completed {
+  background-color: var(--status-completed-bg);
+  border: 1px solid rgba(139, 92, 246, 0.15);
+}
+
+.kanban-column-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+  box-shadow: var(--shadow-sm);
+}
+
+.kanban-column-title {
+  font-weight: 600;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.status-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+/* Status specific header styling */
+.kanban-column-header.created .kanban-column-title { color: var(--status-created); }
+.kanban-column-header.created .status-dot { background-color: var(--status-created); box-shadow: 0 0 8px var(--status-created); }
+
+.kanban-column-header.approved .kanban-column-title { color: var(--status-approved); }
+.kanban-column-header.approved .status-dot { background-color: var(--status-approved); box-shadow: 0 0 8px var(--status-approved); }
+
+.kanban-column-header.scheduled .kanban-column-title { color: var(--status-scheduled); }
+.kanban-column-header.scheduled .status-dot { background-color: var(--status-scheduled); box-shadow: 0 0 8px var(--status-scheduled); }
+
+.kanban-column-header.completed .kanban-column-title { color: var(--status-completed); }
+.kanban-column-header.completed .status-dot { background-color: var(--status-completed); box-shadow: 0 0 8px var(--status-completed); }
+
+.post-count {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.kanban-column-body {
+  flex: 1;
+  min-height: 0; /* flex 자식이 내용물 크기 이상으로 커지는 것을 방지해 스크롤을 활성화함 */
+  overflow-y: auto; /* Internal scrolling for each area */
+  padding-right: 8px; /* space for scrollbar */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Empty state styling */
+.empty-state {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--text-tertiary);
+  font-size: 0.875rem;
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+/* Internal scrollbar for column body */
+.kanban-column-body::-webkit-scrollbar {
+  width: 6px;
+}
+.kanban-column-body::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}
+.kanban-column-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+.kanban-column-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
