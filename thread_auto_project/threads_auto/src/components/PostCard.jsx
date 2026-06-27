@@ -1,10 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import './PostCard.css';
 
 const PostCard = ({ post, isSelected, onToggleSelect, onApprove, onDelete, onUpdate, onSchedule, onCancelSchedule }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(post.content);
+  const textareaRef = useRef(null);
   
+  useEffect(() => {
+    if (isEditing && textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [editContent, isEditing]);
+
   const [isScheduling, setIsScheduling] = useState(false);
   const [scheduleDate, setScheduleDate] = useState('');
 
@@ -67,18 +75,19 @@ const PostCard = ({ post, isSelected, onToggleSelect, onApprove, onDelete, onUpd
       </div>
       
       <div className="post-card-main">
-        <div className="post-card-content">
-          {isEditing ? (
-            <textarea 
-              value={editContent} 
-              onChange={(e) => setEditContent(e.target.value)}
-              className="edit-textarea"
-              rows={4}
-            />
-          ) : (
-            post.content
-          )}
-        </div>
+        {isEditing ? (
+          <textarea 
+            ref={textareaRef}
+            value={editContent} 
+            onChange={(e) => setEditContent(e.target.value)}
+            className="edit-textarea"
+            rows={1}
+          />
+        ) : (
+          <div className="post-card-content">
+            {post.content}
+          </div>
+        )}
 
         <div className="post-card-footer">
           <div className={`char-count ${charClass}`}>

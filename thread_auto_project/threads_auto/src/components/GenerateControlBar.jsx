@@ -8,6 +8,19 @@ const GenerateControlBar = ({ onGenerateComplete }) => {
   const [count, setCount] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState(null);
+  const [isTopicFocused, setIsTopicFocused] = useState(false);
+  const textareaRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (textareaRef.current) {
+      if (isTopicFocused) {
+        textareaRef.current.style.height = 'auto';
+        textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+      } else {
+        textareaRef.current.style.height = 'auto';
+      }
+    }
+  }, [topic, isTopicFocused]);
 
   React.useEffect(() => {
     const loadLastTopic = async () => {
@@ -38,7 +51,7 @@ const GenerateControlBar = ({ onGenerateComplete }) => {
 
       // 1번의 API 호출로 count 개의 콘텐츠를 배열로 받아옴
       const results = await generateThreadsContent(topic, count);
-      
+
       const newPostsPayload = results.map(res => ({
         content: res.content,
         status: 'CREATED',
@@ -63,48 +76,73 @@ const GenerateControlBar = ({ onGenerateComplete }) => {
     <div className="generate-bar-container glass-panel animate-fade-in">
       <div className="generate-inputs">
         <div className="input-group topic-group">
-          <label>주제 (Topic)</label>
-          <input 
-            type="text" 
-            value={topic}
-            onChange={(e) => setTopic(e.target.value)}
-            placeholder="AI가 생성할 스레드의 주제를 입력하세요..." 
-            disabled={isGenerating}
-            onKeyDown={(e) => e.key === 'Enter' && !isGenerating && handleGenerate()}
-          />
-        </div>
-        
-        <div className="input-group count-group">
-          <label>생성 개수</label>
-          <div className="select-wrapper">
-            <select 
-              value={count} 
-              onChange={(e) => setCount(Number(e.target.value))}
+          <label>
+            <span style={{ fontSize: '1rem', fontWeight: 'bold' }}>프롬프트 입력</span>
+            <span style={{ fontSize: '0.6rem', color: 'blue', display: 'block', marginTop: '4px' }}>*가장 마지막에 입력했던 내용이 저장되어 있습니다</span>
+          </label>
+          <div style={{ position: 'relative', width: '100%' }}>
+            <textarea
+              ref={textareaRef}
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              onFocus={() => setIsTopicFocused(true)}
+              onBlur={() => setIsTopicFocused(false)}
+              placeholder="AI가 생성할 스레드의 주제를 입력하세요..."
               disabled={isGenerating}
-            >
-              {[...Array(10)].map((_, i) => (
-                <option key={i + 1} value={i + 1}>{i + 1}개</option>
-              ))}
-            </select>
+              rows={1}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  if (!isGenerating) handleGenerate();
+                }
+              }}
+              style={isTopicFocused ? { position: 'absolute', top: 0, left: 0, zIndex: 50 } : {}}
+            />
+            {isTopicFocused && (
+              <textarea
+                rows={1}
+                disabled
+                style={{ visibility: 'hidden' }}
+              />
+            )}
           </div>
         </div>
 
-        <button 
-          className={`btn btn-primary generate-btn ${isGenerating ? 'generating' : ''}`}
-          onClick={handleGenerate}
-          disabled={isGenerating}
-        >
-          {isGenerating ? (
-            <div className="loading-content">
-              <span className="spinner"></span>
-              <span>생성 중...</span>
+        <div className="input-group action-group">
+          <label>
+            <span style={{ fontSize: '1rem', fontWeight: 'bold' }}>생성 개수</span>
+            <span style={{ fontSize: '0.6rem', color: 'blue', display: 'block', marginTop: '4px' }}>*최소 1개 / 최대 10개</span>
+          </label>
+          <div className="action-row">
+            <div className="select-wrapper">
+              <select
+                value={count}
+                onChange={(e) => setCount(Number(e.target.value))}
+                disabled={isGenerating}
+              >
+                {[...Array(10)].map((_, i) => (
+                  <option key={i + 1} value={i + 1}>{i + 1}개</option>
+                ))}
+              </select>
             </div>
-          ) : (
-            <span>✨ AI 대량 생성</span>
-          )}
-        </button>
+            <button
+              className={`btn-primary generate-btn ${isGenerating ? 'generating' : ''}`}
+              onClick={handleGenerate}
+              disabled={isGenerating}
+            >
+              {isGenerating ? (
+                <div className="loading-content">
+                  <span className="spinner"></span>
+                  생성 중...
+                </div>
+              ) : (
+                '✨ AI 대량 생성'
+              )}
+            </button>
+          </div>
+        </div>
       </div>
-      
+
       {error && <div className="generate-error">{error}</div>}
     </div>
   );

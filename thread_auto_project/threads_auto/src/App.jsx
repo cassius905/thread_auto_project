@@ -296,7 +296,7 @@ function App() {
       {selectedPostIds.length > 0 && (
         <div className="bulk-action-bar animate-fade-in" style={{
           position: 'fixed',
-          bottom: '24px',
+          bottom: '224px',
           left: '50%',
           transform: 'translateX(-50%)',
           background: 'rgba(20, 20, 30, 0.9)',

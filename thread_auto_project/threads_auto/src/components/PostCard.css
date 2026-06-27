@@ -5,7 +5,8 @@
   cursor: grab;
   position: relative;
   display: flex;
-  flex-direction: row; /* Horizontal layout for list view */
+  flex-direction: row;
+  /* Horizontal layout for list view */
   align-items: center;
   gap: 20px;
 }
@@ -37,7 +38,8 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  min-width: 0; /* Important for text truncation in flex child */
+  min-width: 0;
+  /* Important for text truncation in flex child */
 }
 
 .post-card-content {
@@ -47,6 +49,10 @@
   white-space: pre-wrap;
   word-break: break-word;
   text-align: left;
+  background-color: white;
+  border-radius: 15px;
+  padding: 10px;
+  border: solid 1px;
 }
 
 .post-card-media {
@@ -81,9 +87,17 @@
   border-radius: 10px;
 }
 
-.char-count.safe { color: var(--status-approved); }
-.char-count.warning { color: var(--status-scheduled); }
-.char-count.danger { color: #ef4444; }
+.char-count.safe {
+  color: var(--status-approved);
+}
+
+.char-count.warning {
+  color: var(--status-scheduled);
+}
+
+.char-count.danger {
+  color: #ef4444;
+}
 
 .schedule-badge {
   font-size: 0.75rem;
@@ -127,20 +141,22 @@
 
 .edit-textarea {
   width: 100%;
-  padding: 8px 12px;
-  border-radius: var(--radius-sm);
-  background: rgba(0, 0, 0, 0.05);
+  box-sizing: border-box;
+  padding: 10px;
+  border-radius: 15px;
+  background-color: white;
   color: var(--text-primary);
-  border: 1px solid var(--border-color);
-  resize: vertical;
+  border: solid 1px;
+  resize: none;
+  overflow: hidden;
   font-family: inherit;
   font-size: 0.95rem;
   line-height: 1.5;
   outline: none;
-  transition: border-color 0.2s ease, background 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .edit-textarea:focus {
   border-color: var(--accent-primary);
-  background: rgba(0, 0, 0, 0.02);
+  box-shadow: 0 0 0 1px var(--accent-primary);
 }
